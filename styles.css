@@ -113,6 +113,22 @@ body {
   transition: background .12s;
 }
 .btn:hover { background: var(--fsc-green-dark); border-color: var(--fsc-green-dark); }
+.btn-light { background: var(--fsc-lime); border-color: var(--fsc-lime); color: var(--fsc-green-dark); }
+.btn-light:hover { background: #a4d65e; border-color: #a4d65e; }
+.btn:disabled { cursor: wait; opacity: .65; }
+.select-grid { display: contents; }
+.select-grid .field { min-width: 128px; flex: 1 1 128px; }
+
+/* Keep Perspective's shadow DOM controls in the same pale-green accent family. */
+perspective-viewer {
+  --active--color: var(--fsc-lime);
+  --inactive--color: var(--fsc-green);
+  --icon--color: var(--fsc-green);
+  --plugin--background: var(--bg-soft);
+}
+perspective-viewer ::part(button),
+perspective-viewer ::part(select),
+perspective-viewer ::part(input) { accent-color: var(--fsc-lime); }
 
 .main { flex: 1 1 auto; min-height: 0; background: var(--bg); }
 perspective-viewer { width: 100%; height: 100%; }

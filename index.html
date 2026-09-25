@@ -18,6 +18,7 @@
     <div class="status" aria-live="polite">
       <span id="status-dot" class="dot dot-off"></span>
       <span id="status-text">Reading Parquet metadata…</span>
+      <button id="load-all" class="btn btn-light" type="button" title="Load all row groups">Load all</button>
     </div>
   </header>
 
@@ -26,8 +27,16 @@
     <div class="metric"><span class="metric-label">Countries</span><strong id="country-count">—</strong></div>
     <div class="metric"><span class="metric-label">Active certificates</span><strong id="active-count">—</strong></div>
     <div class="field grow">
-      <label for="search">Search company or country</label>
-      <input id="search" type="search" placeholder="Search certificate holder…" autocomplete="off">
+      <label for="search">Search company, license, species or products</label>
+      <input id="search" type="search" placeholder="Company, license code, species, products…" autocomplete="off">
+    </div>
+    <div class="select-grid">
+      <div class="field"><label for="filter-cb">CB</label><select id="filter-cb"><option value="">All CB</option></select></div>
+      <div class="field"><label for="filter-ctype">Ctype</label><select id="filter-ctype"><option value="">All Ctype</option></select></div>
+      <div class="field"><label for="filter-status">Certificate status</label><select id="filter-status"><option value="">All statuses</option></select></div>
+      <div class="field"><label for="filter-certificate-type">Certificate type</label><select id="filter-certificate-type"><option value="">All types</option></select></div>
+      <div class="field"><label for="filter-forest-type">Forest type</label><select id="filter-forest-type"><option value="">All forest types</option></select></div>
+      <div class="field"><label for="filter-country">Country</label><select id="filter-country"><option value="">All countries</option></select></div>
     </div>
     <button id="reset" class="btn" type="button" title="Reset filters">Reset</button>
   </section>
