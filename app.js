@@ -143,50 +143,67 @@ async function loadData() {
   let offset = 0;
   const loadedRows = [];
   for (const [index, rowGroup] of rowGroups.entries()) {
-    const rowCount = Number(rowGroup.row_group_num_rows ?? 0);
-    if (!isLocalPreview()) {
-      const groupColumns = metadataRows.filter((row) => row.row_group_id === rowGroup.row_group_id);
-      const offsets = groupColumns.flatMap((row) => [
-        Number(row.file_offset),
-        Number(row.data_page_offset),
-        Number(row.dictionary_page_offset),
-      ]).filter(Number.isFinite);
-      const sizes = groupColumns.map((row) => Number(row.total_compressed_size)).filter(Number.isFinite);
-      if (offsets.length && sizes.length) {
-        const groupStart = Math.min(...offsets);
-        const groupEnd = Math.max(...groupColumns.flatMap((row) => {
-          const columnOffsets = [
-            Number(row.file_offset),
-            Number(row.data_page_offset),
-            Number(row.dictionary_page_offset),
-          ].filter(Number.isFinite);
-          return columnOffsets.length && Number.isFinite(Number(row.total_compressed_size))
-            ? [Math.min(...columnOffsets) + Number(row.total_compressed_size)]
-            : [];
-        }));
-        if (Number.isFinite(groupEnd) && groupEnd > groupStart) {
-          try {
-            await rangeFetch(REMOTE_DATA_URL, groupStart, groupEnd - groupStart, cache, cacheManifest);
-          } catch (error) {
-            console.warn(`OPFS row group ${index + 1} cache unavailable; continuing with DuckDB`, error);
+    try {
+      const rowCount = Number(rowGroup.row_group_num_rows ?? 0);
+      if (!Number.isInteger(rowCount) || rowCount < 1) {
+        throw new Error(`row group ${index + 1} has invalid row count: ${rowGroup.row_group_num_rows}`);
+      }
+      if (!isLocalPreview()) {
+        const groupColumns = metadataRows.filter((row) => row.row_group_id === rowGroup.row_group_id);
+        const offsets = groupColumns.flatMap((row) => [
+          Number(row.file_offset),
+          Number(row.data_page_offset),
+          Number(row.dictionary_page_offset),
+        ]).filter(Number.isFinite);
+        const sizes = groupColumns.map((row) => Number(row.total_compressed_size)).filter(Number.isFinite);
+        if (offsets.length && sizes.length) {
+          const groupStart = Math.min(...offsets);
+          const groupEnd = Math.max(...groupColumns.flatMap((row) => {
+            const columnOffsets = [
+              Number(row.file_offset),
+              Number(row.data_page_offset),
+              Number(row.dictionary_page_offset),
+            ].filter(Number.isFinite);
+            return columnOffsets.length && Number.isFinite(Number(row.total_compressed_size))
+              ? [Math.min(...columnOffsets) + Number(row.total_compressed_size)]
+              : [];
+          }));
+          if (Number.isFinite(groupEnd) && groupEnd > groupStart) {
+            try {
+              await rangeFetch(REMOTE_DATA_URL, groupStart, groupEnd - groupStart, cache, cacheManifest);
+            } catch (error) {
+              console.warn(`OPFS row group ${index + 1} cache unavailable; continuing with DuckDB`, error);
+            }
           }
         }
       }
+      setStatus(`Reading row group ${index + 1}/${rowGroups.length}…`);
+      const groupRows = await connection.query(
+        `SELECT * FROM read_parquet('${DATA_FILE}') LIMIT ${rowCount} OFFSET ${offset}`,
+      );
+      const rows = groupRows.toArray().map(toPlainRow);
+      if (rows.length !== rowCount) {
+        throw new Error(`row group ${index + 1} returned ${rows.length} of ${rowCount} rows`);
+      }
+      loadedRows.push(...rows);
+      if (!perspectiveTable) {
+        perspectiveTable = await perspectiveWorker.table(rows);
+        await viewer.load(perspectiveTable);
+      } else {
+        try {
+          await perspectiveTable.update(rows);
+        } catch (error) {
+          console.warn(`Perspective update failed for row group ${index + 1}; rebuilding table`, error);
+          perspectiveTable = await perspectiveWorker.table(loadedRows);
+          await viewer.load(perspectiveTable);
+        }
+      }
+      updateSummary(loadedRows);
+      offset += rowCount;
+      setStatus(`Loaded row group ${index + 1}/${rowGroups.length} · ${offset.toLocaleString()} rows`);
+    } catch (error) {
+      throw new Error(`row group ${index + 1}/${rowGroups.length} failed: ${error.message}`);
     }
-    const groupRows = await connection.query(
-      `SELECT * FROM read_parquet('${DATA_FILE}') LIMIT ${rowCount} OFFSET ${offset}`,
-    );
-    const rows = groupRows.toArray().map(toPlainRow);
-    loadedRows.push(...rows);
-    if (!perspectiveTable) {
-      perspectiveTable = await perspectiveWorker.table(rows);
-      await viewer.load(perspectiveTable);
-    } else {
-      await perspectiveTable.update(rows);
-    }
-    updateSummary(loadedRows);
-    offset += rowCount;
-    setStatus(`Loaded row group ${index + 1}/${rowGroups.length} · ${offset.toLocaleString()} rows`);
   }
   if (!rowGroups.length) throw new Error("The Parquet file contains no row groups");
   await connection.close();
