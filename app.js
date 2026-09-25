@@ -5,7 +5,7 @@ import { compressors } from "https://cdn.jsdelivr.net/npm/hyparquet-compressors@
 const DATA_URL = "wide_certificate.parquet";
 const REMOTE_DATA_URL = "https://r2.ybgmbh.com/wide_certificate.parquet";
 const DATA_FILE = "dataset.parquet";
-const CACHE_VERSION = "wide-certificate-v4";
+const CACHE_VERSION = "wide-certificate-v5";
 const OPFS_DIRECTORY = "parquet-cache";
 const SEARCH_COLUMN = "_search_text";
 const SEARCH_FIELDS = ["holder_name", "Certificate_Number__c", "Full_Certificate_Code__c", "species_list", "product_list"];

@@ -122,9 +122,10 @@ body {
 /* Keep Perspective's shadow DOM controls in the same pale-green accent family. */
 perspective-viewer {
   --active--color: var(--fsc-lime);
-  --inactive--color: var(--fsc-green);
-  --icon--color: var(--fsc-green);
-  --plugin--background: var(--bg-soft);
+  --inactive--color: #6b7280;
+  --inactive--border-color: var(--border);
+  --icon--color: var(--text);
+  --plugin--background: var(--bg);
 }
 perspective-viewer ::part(button),
 perspective-viewer ::part(select),
