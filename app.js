@@ -122,7 +122,13 @@ async function loadData() {
 
   const cache = await openOpfsCache().catch(() => null);
   const cacheManifest = await readOpfsManifest(cache);
-  if (!isLocalPreview()) await cacheFooter(REMOTE_DATA_URL, cache, cacheManifest);
+  if (!isLocalPreview()) {
+    try {
+      await cacheFooter(REMOTE_DATA_URL, cache, cacheManifest);
+    } catch (error) {
+      console.warn("OPFS footer cache unavailable; continuing with DuckDB", error);
+    }
+  }
   const connection = await db.connect();
   const metadata = await connection.query(`SELECT * FROM parquet_metadata('${DATA_FILE}')`);
   const metadataRows = metadata.toArray().map(toPlainRow);
@@ -159,7 +165,11 @@ async function loadData() {
             : [];
         }));
         if (Number.isFinite(groupEnd) && groupEnd > groupStart) {
-          await rangeFetch(REMOTE_DATA_URL, groupStart, groupEnd - groupStart, cache, cacheManifest);
+          try {
+            await rangeFetch(REMOTE_DATA_URL, groupStart, groupEnd - groupStart, cache, cacheManifest);
+          } catch (error) {
+            console.warn(`OPFS row group ${index + 1} cache unavailable; continuing with DuckDB`, error);
+          }
         }
       }
     }
