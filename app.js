@@ -5,7 +5,7 @@ import { compressors } from "https://cdn.jsdelivr.net/npm/hyparquet-compressors@
 const DATA_URL = "wide_certificate.parquet";
 const REMOTE_DATA_URL = "https://r2.ybgmbh.com/wide_certificate.parquet";
 const DATA_FILE = "dataset.parquet";
-const CACHE_VERSION = "wide-certificate-v3";
+const CACHE_VERSION = "wide-certificate-v4";
 const OPFS_DIRECTORY = "parquet-cache";
 const SEARCH_COLUMN = "_search_text";
 const SEARCH_FIELDS = ["holder_name", "Certificate_Number__c", "Full_Certificate_Code__c", "species_list", "product_list"];
@@ -125,12 +125,28 @@ async function writeOpfsRange(cache, offset, bytes, manifest) {
 
 async function readCachedRange(cache, offset, length, manifest) {
   if (!cache) return null;
-  const match = manifest.ranges.find(([cachedOffset, cachedLength]) => (
-    cachedOffset <= offset && cachedOffset + cachedLength >= offset + length
-  ));
-  if (!match) return null;
+  const end = offset + length;
+  const ranges = manifest.ranges
+    .map(([cachedOffset, cachedLength]) => [cachedOffset, cachedOffset + cachedLength])
+    .filter(([cachedOffset, cachedEnd]) => cachedOffset < end && cachedEnd > offset)
+    .sort(([left], [right]) => left - right);
+  let cursor = offset;
+  for (const [cachedOffset, cachedEnd] of ranges) {
+    if (cachedOffset > cursor) return null;
+    cursor = Math.max(cursor, cachedEnd);
+    if (cursor >= end) break;
+  }
+  if (cursor < end) return null;
   const file = await cache.file.getFile();
-  return new Uint8Array(await file.slice(offset, offset + length).arrayBuffer());
+  const bytes = new Uint8Array(length);
+  for (const [cachedOffset, cachedEnd] of ranges) {
+    const start = Math.max(offset, cachedOffset);
+    const finish = Math.min(end, cachedEnd);
+    if (finish <= start) continue;
+    const part = new Uint8Array(await file.slice(start, finish).arrayBuffer());
+    bytes.set(part, start - offset);
+  }
+  return bytes;
 }
 
 async function rangeFetch(url, offset, length, cache, manifest) {
