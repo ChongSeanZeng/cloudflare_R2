@@ -17,6 +17,7 @@ const FILTER_FIELDS = [
   ["filter-forest-type", "Forest_Type__c"],
   ["filter-country", "country"],
 ];
+let allLoadedRows = [];
 const viewer = document.querySelector("#viewer");
 const searchInput = document.querySelector("#search");
 const loadAllButton = document.querySelector("#load-all");
@@ -42,6 +43,18 @@ function updateSummary(rows) {
   document.querySelector("#row-count").textContent = rows.length.toLocaleString();
   document.querySelector("#country-count").textContent = countries.size.toLocaleString();
   document.querySelector("#active-count").textContent = active.length.toLocaleString();
+}
+
+function getFilteredRows() {
+  const selectedFilters = FILTER_FIELDS
+    .map(([elementId, field]) => [field, document.querySelector(`#${elementId}`).value])
+    .filter(([_field, value]) => value);
+  const search = searchInput.value.trim().toLowerCase();
+  return allLoadedRows.filter((row) => {
+    const matchesFilters = selectedFilters.every(([field, value]) => String(row[field] ?? "") === value);
+    const matchesSearch = !search || String(row[SEARCH_COLUMN] ?? "").toLowerCase().includes(search);
+    return matchesFilters && matchesSearch;
+  });
 }
 
 function rowForPerspective(row) {
@@ -70,6 +83,7 @@ function applyFilters() {
   const search = searchInput.value.trim();
   if (search) filters.push([SEARCH_COLUMN, "contains", search]);
   window.loadedPerspectiveViewer.restore({ filter: filters });
+  updateSummary(getFilteredRows());
 }
 
 function toPlainRow(row) {
@@ -207,7 +221,7 @@ async function startPerspectiveLoad(parquetFile, metadata, cache, cacheManifest,
   const perspectiveWorker = await perspective.worker();
   let perspectiveTable;
   let offset = 0;
-  const loadedRows = [];
+  allLoadedRows = [];
   let nextGroup = 0;
 
   async function loadNextGroup() {
@@ -230,7 +244,7 @@ async function startPerspectiveLoad(parquetFile, metadata, cache, cacheManifest,
         throw new Error(`row group ${index + 1} returned ${rows.length} of ${rowCount} rows`);
       }
       const perspectiveRows = rows.map(rowForPerspective);
-      loadedRows.push(...perspectiveRows);
+      allLoadedRows.push(...perspectiveRows);
       if (!perspectiveTable) {
         perspectiveTable = await perspectiveWorker.table(perspectiveRows);
         await viewer.load(perspectiveTable);
@@ -243,12 +257,12 @@ async function startPerspectiveLoad(parquetFile, metadata, cache, cacheManifest,
           await perspectiveTable.update(perspectiveRows);
         } catch (error) {
           console.warn(`Perspective update failed for row group ${index + 1}; rebuilding table`, error);
-          perspectiveTable = await perspectiveWorker.table(loadedRows);
+          perspectiveTable = await perspectiveWorker.table(allLoadedRows);
           await viewer.load(perspectiveTable);
         }
       }
-      updateSummary(loadedRows);
-      updateFilterOptions(loadedRows);
+      updateSummary(getFilteredRows());
+      updateFilterOptions(allLoadedRows);
       offset += rowCount;
       nextGroup += 1;
       setStatus(`Loaded row group ${index + 1}/${rowGroups.length} · ${offset.toLocaleString()} rows`);
