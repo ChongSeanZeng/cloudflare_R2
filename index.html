@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FSC Certificate Explorer</title>
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@finos/perspective-viewer/dist/cdn/perspective-viewer.js"></script>
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@finos/perspective-viewer-datagrid/dist/cdn/perspective-viewer-datagrid.js"></script>
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@finos/perspective-viewer-d3fc/dist/cdn/perspective-viewer-d3fc.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>FSC Certificate Explorer</h1>
+      <p class="subtitle">Apache Arrow + Perspective</p>
+    </div>
+    <div class="status" aria-live="polite">
+      <span id="status-dot" class="dot dot-off"></span>
+      <span id="status-text">Reading Parquet metadata…</span>
+    </div>
+  </header>
+
+  <section class="filters" aria-label="Dataset summary">
+    <div class="metric"><span class="metric-label">Rows</span><strong id="row-count">—</strong></div>
+    <div class="metric"><span class="metric-label">Countries</span><strong id="country-count">—</strong></div>
+    <div class="metric"><span class="metric-label">Active certificates</span><strong id="active-count">—</strong></div>
+    <div class="field grow">
+      <label for="search">Search company or country</label>
+      <input id="search" type="search" placeholder="Search certificate holder…" autocomplete="off">
+    </div>
+    <button id="reset" class="btn" type="button" title="Reset filters">Reset</button>
+  </section>
+
+  <main class="main">
+    <perspective-viewer id="viewer" theme="Pro Light" plugin="Datagrid" aria-label="Certificate data grid"></perspective-viewer>
+    <div id="error" class="error hidden" role="alert"></div>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
